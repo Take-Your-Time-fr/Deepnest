@@ -1,3 +1,5 @@
+### [中文版本](https://github.com/xiaoqiangjun/Deepnest/blob/master/main/README_chs.md)  
+  ---
 # ![SVGNest](http://svgnest.com/github/logo2.png)
 
 **SVGNest**: A browser-based vector nesting tool.
