@@ -24,7 +24,7 @@
 
 这在CNC术语中叫做**排样**，而[实现](http://www.autodesk.com/products/trunest/overview)这种功能的[软件](http://www.mynesting.com/)通常是针对[工业客户](http://www.hypertherm.com/en/Products/Automated_cutting/Nesting_software/)并且[十分昂贵](http://www.nestfab.com/pricing/)。
 
-SVGnest是一个解决此问题的免费开源方案，使用[E.K. Burke *et al.* 2006]提出的轨迹方法和全局优化的遗传算法。它适用于任意容器和凹形边缘的情况，并且可以与现有的商业软件媲美。
+SVGnest是一个解决此问题的免费开源方案，使用[E.K. Burke *et al.* 2006](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.440.379&rep=rep1&type=pdf)提出的轨迹方法和全局优化的遗传算法。它适用于任意容器和凹形边缘的情况，并且可以与现有的商业软件媲美。
 
 ![non-rectangular shapes](http://svgnest.com/github/shapes.png)
 
