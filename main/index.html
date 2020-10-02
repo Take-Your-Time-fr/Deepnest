@@ -565,74 +565,79 @@
 				
 					   { name: 'CAD formats', extensions: ['svg', 'dxf', 'cdr'] }
 				
-					  ]}, function (fileName) {
+					  ],
+					  properties:['openFile', 'multiSelections']
+					  
+					}, function (fileName) {
 						if(fileName === undefined){
 							importbutton.className = 'button import';
 							console.log("No file selected");
 						}
 						else{
-							var ext = path.extname(fileName[0]);
-							var filename = path.basename(fileName[0]);
-
-							if(ext.toLowerCase() == '.svg'){
-								readFile(fileName[0]);
-								importbutton.className = 'button import';
-							}
-							else{
-								importbutton.className = 'button import spinner';
-								
-								// send to conversion server
-								var url = config.getSync('conversionServer');
-								if(!url){
-									url = defaultConversionServer;
-								}
-								
-								var req = request.post(url, function (err, resp, body) {
-									importbutton.className = 'button import';
-									if (err) {
-										message('could not contact file conversion server', true);
-									} else {
-										if(body.substring(0, 5) == 'error'){
-											message(body, true);
-										}
-										else{
-											// expected input dimensions on server is points
-											// scale based on unit preferences
-											var con = null;
-                                            var dxfFlag = false;
-											if(ext.toLowerCase() == '.dxf'){
-												//var unit = config.getSync('units');
-												con = Number(config.getSync('dxfImportScale'));
-												dxfFlag = true;
-												console.log('con', con);
-												
-												/*if(unit == 'inch'){
-													con = 72;
-												}
-												else{
-													// mm
-													con = 2.83465;
-												}*/
-											}
-											
-											// dirpath is used for loading images embedded in svg files
-											// converted svgs will not have images
-											importData(body, filename, null, con, dxfFlag);
-										}
-									}
-								});
-
-								var form = req.form();
-								form.append('format', 'svg');
-								form.append('fileUpload', fs.createReadStream(fileName[0]));
-							}
+							importbutton.className = 'button import spinner';
+							fileName.forEach(function(file) {
+								processFile(file);
+							});
+							importbutton.className = 'button import';
 						}
-						
 					});
 				}, 50);
-				
 			};
 			
+			function processFile(file) {
+				var ext = path.extname(file);
+				var filename = path.basename(file);
+
+				if(ext.toLowerCase() == '.svg'){
+					readFile(file);
+				}
+				else{
+					// send to conversion server
+					var url = config.getSync('conversionServer');
+					if(!url){
+						url = defaultConversionServer;
+					}
+					
+					var req = request.post(url, function (err, resp, body) {
+						if (err) {
+							message('could not contact file conversion server', true);
+						} else {
+							if(body.substring(0, 5) == 'error'){
+								message(body, true);
+							}
+							else{
+								// expected input dimensions on server is points
+								// scale based on unit preferences
+								var con = null;
+								var dxfFlag = false;
+								if(ext.toLowerCase() == '.dxf'){
+									//var unit = config.getSync('units');
+									con = Number(config.getSync('dxfImportScale'));
+									dxfFlag = true;
+									console.log('con', con);
+									
+									/*if(unit == 'inch'){
+										con = 72;
+									}
+									else{
+										// mm
+										con = 2.83465;
+									}*/
+								}
+								
+								// dirpath is used for loading images embedded in svg files
+								// converted svgs will not have images
+								importData(body, filename, null, con, dxfFlag);
+							}
+						}
+					});
+
+					var form = req.form();
+					form.append('format', 'svg');
+					form.append('fileUpload', fs.createReadStream(file));
+				}
+			}
+
 			function readFile(filepath){
 				fs.readFile(filepath, 'utf-8', function (err, data) {
 					  if(err){
@@ -707,21 +712,21 @@
 				return false;
 			};
 			
-			// add rectangle
-			document.querySelector('#addrectangle').onclick = function(){
+			// add sheet
+			document.querySelector('#addsheet').onclick = function(){
 				var tools = document.querySelector('#partstools');
-				var dialog = document.querySelector('#rectangledialog');
+				var dialog = document.querySelector('#sheetdialog');
 				
 				tools.className = 'active';
 			};
 			
-			document.querySelector('#cancelrectangle').onclick = function(){
+			document.querySelector('#cancelsheet').onclick = function(){
 				document.querySelector('#partstools').className = '';
 			};
 			
-			document.querySelector('#confirmrectangle').onclick = function(){
-				var width = document.querySelector('#rectanglewidth');
-				var height = document.querySelector('#rectangleheight');
+			document.querySelector('#confirmsheet').onclick = function(){
+				var width = document.querySelector('#sheetwidth');
+				var height = document.querySelector('#sheetheight');
 				
 				if(Number(width.value) <= 0){
 					width.className = 'error';
@@ -747,8 +752,10 @@
 				rect.setAttribute('y',0);
 				rect.setAttribute('width',width.value*conversion);
 				rect.setAttribute('height',height.value*conversion);
+				rect.setAttribute('class', 'sheet');
 				svg.appendChild(rect);
-				DeepNest.importsvg(null, null, (new XMLSerializer()).serializeToString(svg));
+				const sheet = DeepNest.importsvg(null, null, (new XMLSerializer()).serializeToString(svg))[0];
+				sheet.sheet = true;
 				
 				width.className = '';
 				height.className = '';
@@ -990,6 +997,12 @@
 						console.log("No file selected");
 					}
 					else{
+
+						var fileExt = '.svg';
+						if (!fileName.toLowerCase().endsWith(fileExt)) {
+							fileName = fileName + fileExt;
+						}
+
 						var selected = DeepNest.nests.filter(function(n){
 							return n.selected;
 						});
@@ -1011,6 +1024,12 @@
 						console.log("No file selected");
 					}
 					else{
+
+						var fileExt = '.dxf';
+						if (!fileName.toLowerCase().endsWith(fileExt)) {
+							fileName = fileName + fileExt;
+						}
+
 						var selected = DeepNest.nests.filter(function(n){
 							return n.selected;
 						});
@@ -1144,6 +1163,7 @@
 						
 						// position part
 						partgroup.setAttribute('transform','translate('+p.x+' '+p.y+') rotate('+p.rotation+')');
+						partgroup.setAttribute('id',p.id);
 					});
 					
 					// put next sheet below
@@ -1636,17 +1656,17 @@
 					</div>
 					
 					<div id="partstools">
-						<a href="#" class="button addrectangle" id="addrectangle">&nbsp;</a>
+						<a href="#" class="button addsheet" id="addsheet">&nbsp;</a>
 						<a href="#" class='button delete {{ getSelected().length == 0 ? "disabled" : "" }}' on-click="delete">&nbsp;</a>
 						<a href="#" class="button {{ parts.length == 0 ? "disabled" : "" }}" id="selectall" on-click="selectall">{{ getSelected().length == parts.length ? 'Deselect' : 'Select' }} all</a>
 						
-						<div id="rectangledialog">
-						<h2>Add Rectangle</h2>
-						<span class="row"><span class="label">width</span> <input type="number" min="0" id="rectanglewidth" required /> {{ getUnits }}</span>
-						<span class="row"><span class="label">height</span> <input type="number" min="0" id="rectangleheight" required /> {{ getUnits }}</span>
+						<div id="sheetdialog">
+						<h2>Add Sheet</h2>
+						<span class="row"><span class="label">width</span> <input type="number" min="0" id="sheetwidth" required /> {{ getUnits }}</span>
+						<span class="row"><span class="label">height</span> <input type="number" min="0" id="sheetheight" required /> {{ getUnits }}</span>
 						
-						<a href="#" class="button add" id="confirmrectangle">Add</a>
-						<a href="#" class="button" id="cancelrectangle">Cancel</a>
+						<a href="#" class="button add" id="confirmsheet">Add</a>
+						<a href="#" class="button" id="cancelsheet">Cancel</a>
 						</div>
 					</div>
 				</div>
