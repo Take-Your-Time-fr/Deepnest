@@ -1,5 +1,5 @@
 {
-  "name": "Deepnest.io",
+  "name": "Deepnest-io",
   "version": "1.0.5db",
   "description": "Deep nesting for Laser and CNC",
   "main": "main.js",
@@ -25,9 +25,10 @@
     "url": "http://deepnest.io"
   },
   "devDependencies": {
-    "electron": "^1.4.1",
+    "electron": "1.4.8",
     "electron-builder": "^20.26.0",
-    "electron-rebuild": "^1.8.4"
+    "electron-packager": "^14.2.1",
+    "electron-rebuild": "^1.11.0"
   },
   "dependencies": {
     "electron-config": "^0.2.1",
