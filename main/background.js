@@ -1,5 +1,5 @@
 'use strict';
-
+//����ע�͵���һЩ���õ���Ϣ���
 
 function clone(nfp){
 	var newnfp = [];
@@ -81,6 +81,7 @@ window.db = {
 		var key = 'A'+obj.A+'B'+obj.B+'Arot'+parseInt(obj.Arotation)+'Brot'+parseInt(obj.Brotation);
 		if(window.performance.memory.totalJSHeapSize < 0.8*window.performance.memory.jsHeapSizeLimit){
 			window.nfpcache[key] = cloneNfp(obj.nfp, inner);
+			
 			//console.log('cached: ',window.cache[key].poly);
 			//console.log('using', window.performance.memory.totalJSHeapSize/window.performance.memory.jsHeapSizeLimit);
 		}
@@ -93,6 +94,7 @@ window.db = {
 				console.log("couldn't write");
 			}
 		});*/
+		
 	}
 }
 
@@ -168,7 +170,7 @@ window.onload = function () {
 			}
 		}
 		
-		console.log('pairs: ',pairs.length);
+		//console.log('pairs: ',pairs.length);//ԭ��û�б�ע��
 		  
 		  var process = function(pair){
 			
@@ -251,19 +253,19 @@ window.onload = function () {
 		  // run the placement synchronously
 		  function sync(){
 		  	//console.log('starting synchronous calculations', Object.keys(window.nfpCache).length);
-		  	console.log('in sync');
+		  	//console.log('in sync'); 
 		  	var c=0;
 		  	for (var key in window.nfpcache) {
 				c++;
 			}
-			console.log('nfp cached:', c);
+			//console.log('nfp cached:', c); 
 		  	var placement = placeParts(data.sheets, parts, data.config, index);
 	
 			placement.index = data.index;
 			ipcRenderer.send('background-response', placement);
 		  }
 		  
-		  console.time('Total');
+		  //console.time('Total');//ԭ��û�б�ע��
 		  
 		  
 		  if(pairs.length > 0){
@@ -336,8 +338,8 @@ window.onload = function () {
 					window.db.insert(doc);
 					
 				}
-				console.timeEnd('Total');
-				console.log('before sync');
+				//console.timeEnd('Total');//ԭ��û�б�ע��
+				//console.log('before sync');//ԭ��û�б�ע��
 				sync();
 			  });
 		  }
@@ -517,6 +519,7 @@ function toClipperCoordinates(polygon){
 function nfpToClipperCoordinates(nfp, config){
 	var clipperNfp = [];
 	
+	
 	// children first
 	if(nfp.children && nfp.children.length > 0){
 		for(var j=0; j<nfp.children.length; j++){
@@ -647,8 +650,8 @@ function getOuterNfp(A, B, inside){
 	//console.timeEnd('addon');
 	}
 	else{
-		console.log('minkowski', A.length, B.length, A.source, B.source);
-		console.time('clipper');
+		//console.log('minkowski', A.length, B.length, A.source, B.source);// ԭ��û�б�ע��
+		//console.time('clipper');//ԭ��û�б�ע��
 	
 		var Ac = toClipperCoordinates(A);
 		ClipperLib.JS.ScaleUpPath(Ac, 10000000);
@@ -680,7 +683,7 @@ function getOuterNfp(A, B, inside){
 		
 		nfp = [clipperNfp];
 		//console.log('clipper nfp', JSON.stringify(nfp));
-		console.timeEnd('clipper');
+		//console.timeEnd('clipper');//ԭ��û�б�ע��
 	}
 	
 	if(!nfp || nfp.length == 0){
@@ -712,8 +715,8 @@ function getOuterNfp(A, B, inside){
 function getFrame(A){
 	var bounds = GeometryUtil.getPolygonBounds(A);
 	
-	// expand bounds by 10%
-	bounds.width *= 1.1; 
+	// expand bounds by 10% 
+	bounds.width *= 1.1;
 	bounds.height *= 1.1;
 	bounds.x -= 0.5*(bounds.width - (bounds.width/1.1));
 	bounds.y -= 0.5*(bounds.height - (bounds.height/1.1));
@@ -787,7 +790,7 @@ function getInnerNfp(A, B, config){
 	
 	if(typeof A.source !== 'undefined' && typeof B.source !== 'undefined'){
 		// insert into db
-		console.log('inserting inner: ',A.source, B.source, B.rotation, f);
+		//console.log('inserting inner: ',A.source, B.source, B.rotation, f);//ԭ��û�б�ע��
 		var doc = {
 			A: A.source,
 			B: B.source,
@@ -801,7 +804,17 @@ function getInnerNfp(A, B, config){
 	return f;
 }
 
+
+var maxratio = 0;//��¼���������
+var min_rect_width = Number.MAX_VALUE;//��¼��С����
+var ch =0;
+var start;
+
 function placeParts(sheets, parts, config, nestindex){
+	if (ch==0){
+		start = new Date().getTime(); 
+		ch++;
+	}
 
 	if(!sheets){
 		return null;
@@ -835,31 +848,40 @@ function placeParts(sheets, parts, config, nestindex){
 	var key, nfp;
 	var part;
 	
+
 	while(parts.length > 0){
 		
 		var placed = [];
 		var placements = [];
-		
+		var totalarea = 0;//4.17 ��������¼�������������ܺ�
+		var rectarea = 0;//��¼����������ú�ľ��ΰ���
+		var rect_width = 0;
 		// open a new sheet
 		var sheet = sheets.shift();
 		var sheetarea = Math.abs(GeometryUtil.polygonArea(sheet));
 		totalsheetarea += sheetarea;
+		
+		
+		
 		
 		fitness += sheetarea; // add 1 for each new sheet opened (lower fitness is better)
 		
 		var clipCache = [];
 		//console.log('new sheet');
 		for(i=0; i<parts.length; i++){
-			console.time('placement');
+			//console.time('placement'); //ԭ��û�б�ע��
 			part = parts[i];
+
+			totalarea += Math.abs(GeometryUtil.polygonArea(part)); //�����������ܺ�
 			
 			// inner NFP
 			var sheetNfp = null;				
 			// try all possible rotations until it fits
 			// (only do this for the first part of each sheet, to ensure that all parts that can be placed are, even if we have to to open a lot of sheets)
-			for(j=0; j<config.rotations; j++){
+			for(j=0; j<(config.rotations); j++){
 				sheetNfp = getInnerNfp(sheet, part, config);
 				
+
 				if(sheetNfp){
 					break;
 				}
@@ -900,7 +922,7 @@ function placeParts(sheets, parts, config, nestindex){
 					}
 				}
 				if(position === null){
-					console.log(sheetNfp);
+					//console.log(sheetNfp);//ԭ��û�б�ע��
 				}
 				placements.push(position);
 				placed.push(part);
@@ -953,7 +975,7 @@ function placeParts(sheets, parts, config, nestindex){
 			}
 			
 			if(error || !clipper.Execute(ClipperLib.ClipType.ctUnion, combinedNfp, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero)){
-				console.log('clipper error', error);
+				//console.log('clipper error', error);//ԭ��û�б�ע��
 				continue;
 			}
 			
@@ -967,7 +989,7 @@ function placeParts(sheets, parts, config, nestindex){
 				index: placed.length-1
 			};
 			
-			console.log('save cache', placed.length-1);
+			//console.log('save cache', placed.length-1);//ԭ��û�б�ע��
 			
 			// difference with sheet polygon
 			var finalNfp = new ClipperLib.Paths();
@@ -1000,6 +1022,8 @@ function placeParts(sheets, parts, config, nestindex){
 			var miny = null;
 			var nf, area, shiftvector;
 			
+
+			
 			var allpoints = [];
 			for(m=0; m<placed.length; m++){
 				for(n=0; n<placed[m].length; n++){
@@ -1009,7 +1033,7 @@ function placeParts(sheets, parts, config, nestindex){
 			
 			var allbounds;
 			var partbounds;
-			if(config.placementType == 'gravity' || config.placementType == 'box'){
+			if(config.placementType == 'gravity' || config.placementType == 'box'||config.placementType == 'mix'){
 				allbounds = GeometryUtil.getPolygonBounds(allpoints);
 				
 				var partpoints = [];
@@ -1023,7 +1047,7 @@ function placeParts(sheets, parts, config, nestindex){
 			}
 			for(j=0; j<finalNfp.length; j++){
 				nf = finalNfp[j];
-				//console.log('evalnf',nf.length);
+				//console.log('evalnf',nf.length); 
 				for(k=0; k<nf.length; k++){
 					
 					shiftvector = {
@@ -1040,7 +1064,7 @@ function placeParts(sheets, parts, config, nestindex){
 					}*/
 					//console.time('evalbounds');
 					
-					if(config.placementType == 'gravity' || config.placementType == 'box'){
+					if(config.placementType == 'gravity' || config.placementType == 'box'||config.placementType == 'mix'){
 						var rectbounds = GeometryUtil.getPolygonBounds([
 							// allbounds points
 							{x: allbounds.x, y:allbounds.y},
@@ -1054,15 +1078,43 @@ function placeParts(sheets, parts, config, nestindex){
 							{x: partbounds.x+partbounds.width+shiftvector.x, y:partbounds.y+partbounds.height+shiftvector.y},
 							{x: partbounds.x+shiftvector.x, y:partbounds.y+partbounds.height+shiftvector.y}
 						]);
-						
+
+
 						// weigh width more, to help compress in direction of gravity
 						if(config.placementType == 'gravity'){
 							area = rectbounds.width*2 + rectbounds.height;
 						}
+						else if(config.placementType == 'mix'){ //�����ķ��ò���
+							var w1, w2; //w1��ʾ�������������������ΰ���������Է���ǰ����������ΰ��������w2��ʾ���϶�
+							w1 = (rectbounds.width*rectbounds.height)^2/(allbounds.width*allbounds.height);
+							//����w2;
+							var overlap=0;
+							var rectPart = GeometryUtil.getPolygonBounds([
+								{x: partbounds.x+shiftvector.x, y:partbounds.y+shiftvector.y},
+								{x: partbounds.x+partbounds.width+shiftvector.x, y:partbounds.y+shiftvector.y},
+								{x: partbounds.x+partbounds.width+shiftvector.x, y:partbounds.y+partbounds.height+shiftvector.y},
+								{x: partbounds.x+shiftvector.x, y:partbounds.y+partbounds.height+shiftvector.y}
+							]);
+
+							for(m=0;m<placed.length;m++){
+								var points=[];
+								for (n=0;n<placed[m].length;n++){
+									points.push({x:placed[m][n].x+placements[m].x, y:placed[m][n].y+placements[m].y});
+								}
+								var rect1 = GeometryUtil.getPolygonBounds(points);
+								
+								overlap += calculateOverlap(rectPart, rect1);
+							 }
+							w2 = overlap;
+							
+							area = w1 - w2;
+						}
+						
 						else{
 							area = rectbounds.width * rectbounds.height;
 						}
 					}
+					
 					else{
 						// must be convex hull
 						var localpoints = clone(allpoints);
@@ -1128,6 +1180,46 @@ function placeParts(sheets, parts, config, nestindex){
 				}
 			}
 			
+			if(i==parts.length-1){ //�ж��Ƿ������һ���������
+				var bbb=[];
+				for(m=0; m<placed.length; m++){
+					for(n=0; n<placed[m].length; n++){
+						bbb.push({x:placed[m][n].x+placements[m].x, y:placed[m][n].y+placements[m].y});
+					}
+				}
+
+				var rect= GeometryUtil.getPolygonBounds(bbb);
+			
+				rectarea = rect.width * rect.height;
+				rect_width = rect.width; //����
+				var ratio = totalarea / rectarea; //ԭ����������
+				
+				//var maxratio=0;//��¼���������
+/*				if (ratio>maxratio){
+					//console.log('TotalArea', totalarea);//4.17����
+					//console.log('rectArea', rectarea);
+					
+					//console.log('Ratio:',ratio);
+					maxratio = ratio;
+					var end = new Date().getTime();
+					//console.log('time',(end-start)/1000);
+					console.log('width:', (rect.width*25.4/72), ' height:', (rect.height*25.4/72), ' Ratio:',ratio, ' time',(end-start)/1000);
+				}	        */
+				if (rect_width < min_rect_width) {
+					//console.log('TotalArea', totalarea);//4.17����
+					//console.log('rectArea', rectarea);
+
+					//console.log('Ratio:',ratio);
+					min_rect_width = rect_width;
+					var end = new Date().getTime();
+					//console.log('time',(end-start)/1000);
+					console.log('width:', (rect.width * 25.4 / 72), ' height:', (rect.height * 25.4 / 72), ' Ratio:', ratio, ' time', (end - start) / 1000);
+				}	        
+	        }
+	
+					
+
+		
 			// send placement progress signal
 			var placednum = placed.length;
 			for(j=0; j<allplacements.length; j++){
@@ -1135,13 +1227,16 @@ function placeParts(sheets, parts, config, nestindex){
 			}
 			//console.log(placednum, totalnum);
 			ipcRenderer.send('background-progress', {index: nestindex, progress: 0.5 + 0.5*(placednum/totalnum)});
-			console.timeEnd('placement');
+			//console.timeEnd('placement');//ԭ��û�б�ע��
 		}
 		
-		//if(minwidth){
-		fitness += (minwidth/sheetarea) + minarea;
-		//}
 		
+		//if(minwidth){
+		//fitness += (minwidth/sheetarea) + minarea;
+		//}
+		//fitness += minarea;
+		//fitness += rectarea; 7.28�޸�
+		fitness += rect_width;
 		for(i=0; i<placed.length; i++){
 			var index = parts.indexOf(placed[i]);
 			if(index >= 0){
@@ -1169,10 +1264,38 @@ function placeParts(sheets, parts, config, nestindex){
 	// send finish progerss signal
 	ipcRenderer.send('background-progress', {index: nestindex, progress: -1});
 	
-	return {placements: allplacements, fitness: fitness, area: sheetarea, mergedLength: totalMerged };
+	return {adaptusage:ratio,placements: allplacements, fitness: fitness, area: sheetarea, mergedLength: totalMerged };
 }
 
 // clipperjs uses alerts for warnings
 function alert(message) { 
     console.log('alert: ', message);
+}
+
+function calculateOverlap(Rect1, Rect2){   //���ڼ����������ε��ص���� 4.19
+	var x1,y1,x2,y2,width1,width2,height1,height2,endx,endy,startx,starty,width,height;
+	x1 = Rect1.x;
+	y1 = Rect1.y;
+	width1 = Rect1.width;
+	height1 = Rect1.height;
+	
+	x2 = Rect2.x;
+	y2 = Rect2.y;
+	width2 = Rect2.width;
+	height2 = Rect2.height;
+
+	endx = Math.max(x1+width1, x2+width2);
+	startx = Math.min(x1, x2);
+	width = width1+width2-(endx-startx);
+
+	endy=Math.max(y1+height1, y2+height2);
+	starty=Math.min(y1, y2);
+	height=height1+height2-(endy-starty);
+
+	if (width<=0||height<=0){
+		return 0;
+	}
+	else{
+		return width*height;
+	}
 }

@@ -92,7 +92,7 @@ function createMainWindow() {
   mainWindow.setMenu(null);
 
   // Open the DevTools.
-  //mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
@@ -110,10 +110,10 @@ function createBackgroundWindows() {
 	// used to have 8, now just 1 background window
 	if(winCount < 1){
 		var back = new BrowserWindow({
-			show: false
+			show: true
 		});
 		
-		//back.webContents.openDevTools();
+		back.webContents.openDevTools();
 		
 		back.loadURL(url.format({
 			pathname: path.join(__dirname, './main/background.html'),
@@ -124,7 +124,7 @@ function createBackgroundWindows() {
 		backgroundWindows[winCount] = back;
 		
 		back.once('ready-to-show', () => {
-		  //back.show();
+		  back.show();
 		  winCount++;
 		  createBackgroundWindows();
 		});

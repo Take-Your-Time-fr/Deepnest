@@ -3,20 +3,21 @@
  * Licensed under GPLv3
  */
  
-(function(root){
+(function (root) {
+	// ������
 	'use strict';
 	
 	const { ipcRenderer } = require('electron');
 	const path = require('path')
 	const url = require('url')
-	
+
+
 	root.DeepNest = new DeepNest();
 	
 	function DeepNest(){
 		var self = this;
 		
 		var svg = null;
-		
 		var config = {
 			clipperScale: 10000000,
 			curveTolerance: 0.3, 
@@ -29,7 +30,8 @@
 			mergeLines: true,
 			timeRatio: 0.5,
 			scale: 72,
-			simplify: false
+			simplify: false,
+			adaptga: false
 		};
 		
 		// list of imported files
@@ -73,9 +75,8 @@
 			for(var i=0; i<parts.length; i++){
 				this.parts.push(parts[i]);
 			}
-
 			return parts;
-			
+
 			// test simplification
 			/*for(i=0; i<parts.length; i++){
 				var part = parts[i];
@@ -519,7 +520,11 @@
 			if(c.simplify === true || c.simplify === false){
 				config.simplify = !!c.simplify;
 			}
-			
+
+			if (c.adaptga === true || c.adaptga === false) {
+				config.adaptga = !!c.adaptga;
+			}
+
 			var n = Number(c.timeRatio);
 			if(typeof n == 'number' && !isNaN(n) && isFinite(n)){
 				config.timeRatio = n;
@@ -1018,7 +1023,7 @@
 		}
 		
 		ipcRenderer.on('background-response', (event, payload) => {
-			console.log('ipc response',payload);
+			//console.log('ipc response',payload);
 			if(!GA){
 				// user might have quit while we're away
 				return;
@@ -1027,9 +1032,9 @@
 			GA.population[payload.index].fitness = payload.fitness;
 			
 			// render placement
-			if(this.nests.length == 0 || this.nests[0].fitness > payload.fitness ){
+			if (this.nests.length == 0 || this.nests[0].fitness > payload.fitness ){
 				this.nests.unshift(payload);
-				
+				console.log('new best', payload.fitness, payload.adaptusage);
 				if(this.nests.length > 10){
 					this.nests.pop();
 				}
@@ -1248,7 +1253,7 @@
 				clone.push(parts[i].cloneNode(false));
 			}
 			
-			var svglist = [];
+			var svglist = []; 
 
 			for(i=0; i<placement.length; i++){
 				var newsvg = svg.cloneNode(false);
@@ -1329,8 +1334,8 @@
 	}
 	
 	function GeneticAlgorithm(adam, config){
-	
-		this.config = config || { populationSize: 10, mutationRate: 10, rotations: 4 };
+
+		this.config = config || { populationSize: 10, mutationRate: 10, rotations: 4, adaptga:false };
 				
 		// population is an array of individuals. Each individual is a object representing the order of insertion and the angle each part is rotated
 		var angles = [];
@@ -1349,18 +1354,28 @@
 	
 	// returns a mutated individual with the given mutation rate
 	GeneticAlgorithm.prototype.mutate = function(individual){
-		var clone = {placement: individual.placement.slice(0), rotation: individual.rotation.slice(0)};
-		for(var i=0; i<clone.placement.length; i++){
+		var clone = { placement: individual.placement.slice(0), rotation: individual.rotation.slice(0) };
+		var num = clone.placement.length-1;
+		//var count = 0;
+		for(var i=0; i<num; i++){
 			var rand = Math.random();
-			if(rand < 0.01*this.config.mutationRate){
-				// swap current part with next part
+			if (rand < 0.01 * this.config.mutationRate) {
+				// original mutation method 
+				//swap current part with next part
 				var j = i+1;
 				
-				if(j < clone.placement.length){
+				if(j < num){
 					var temp = clone.placement[i];
 					clone.placement[i] = clone.placement[j];
 					clone.placement[j] = temp;
 				}
+				//rand = Math.floor(rand * num);
+				//if (count < 5) {
+				//	var temp = clone.placement[rand];
+				//	clone.placement[rand] = clone.placement[num];
+				//	clone.placement[num] = temp;
+				//}
+				//count++;
 			}
 			
 			rand = Math.random();
@@ -1416,16 +1431,45 @@
 		this.population.sort(function(a, b){
 			return a.fitness - b.fitness;
 		});
-		
+
+		var avefit = 0;
+		var minfit = 0;
+		for (var k = 0; k < this.population.length; k++) {
+			avefit += this.population[k].fitness;
+			if (minfit == 0 || this.population[k].fitness < minfit) {
+				minfit = this.population[k].fitness
+			}
+		}
+		avefit = avefit / this.population.length;
+
 		// fittest individual is preserved in the new generation (elitism)
 		var newpopulation = [this.population[0]];
 		
 		while(newpopulation.length < this.population.length){
 			var male = this.randomWeightedIndividual();
 			var female = this.randomWeightedIndividual(male);
-			
+
 			// each mating produces two children
-			var children = this.mate(male, female);
+			if (this.config.adaptga) {
+				//console.log("using aga!");
+				var fi = Math.min(male.fitness, female.fitness);
+				var rand = Math.random();
+				if (fi < avefit) {
+					if (rand < ((minfit - fi) / (minfit - avefit))) {
+						var children = this.mate(male, female);
+					}
+					else {
+						var children = [male, female];
+					}
+				}
+				else {
+					var children = this.mate(male, female);
+                }
+			}
+			else {
+				//console.log("using sga!");
+				var children = this.mate(male, female);
+            }
 			
 			// slightly mutate children
 			newpopulation.push(this.mutate(children[0]));
