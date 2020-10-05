@@ -1,6 +1,6 @@
 {
-  "name": "Deepnest-io",
-  "version": "1.0.5db",
+  "name": "deepnest.io",
+  "version": "1.0.7",
   "description": "Deep nesting for Laser and CNC",
   "main": "main.js",
   "scripts": {
